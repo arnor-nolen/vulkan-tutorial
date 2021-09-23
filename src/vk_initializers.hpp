@@ -3,10 +3,6 @@
 
 #pragma once
 
-#include <vk_types.h>
+#include <vk_types.hpp>
 
-namespace vkinit {
-
-	//vulkan init code goes here
-}
-
+namespace vkinit {} // namespace vkinit
