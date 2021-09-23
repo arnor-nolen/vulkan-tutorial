@@ -1,0 +1,5 @@
+---
+Checks:          '*,-fuchsia-*,-google-readability-todo,-google-runtime-references,-llvm-header-guard'
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+FormatStyle:     none
