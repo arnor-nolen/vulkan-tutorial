@@ -15,7 +15,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   # Suppress linker warnings:
   # 1. external libraries are compiled without debug info.
   # Prevent command line window from spawning
-  add_link_options(/IGNORE:4099 /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
+  # add_link_options(/IGNORE:4099 /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
 
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 
@@ -76,8 +76,12 @@ add_custom_target(
     DEPENDS ${SPIRV_BINARY_FILES}
     )
 
+# --------------------------------
+# End of Vulkan magic
+# --------------------------------
+
 # Link libraries
 target_link_libraries(${PROJECT_NAME} ${CONAN_TARGETS} Vulkan::Vulkan)
 
 # Add shaders check
-add_dependencies(vulkan-tutorial Shaders)
+add_dependencies(${PROJECT_NAME} Shaders)

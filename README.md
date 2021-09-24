@@ -1,10 +1,10 @@
 ## Vulkan tutorial
 
-Simple vulkan setup
+Simple rendering engine using Vulkan.
 
 ## Dependencies
 
-I use `conan` package manager to pull all the necessary dependecies. This project's dependencies can be seen in [conanfile.txt](./conanfile.txt).
+Vulkan SDK has to be installed in the system. For the rest of dependencies, I use `conan` package manager to pull them all. This project's dependencies can be seen in [conanfile.txt](./conanfile.txt).
 
 ## Compilation info
 
