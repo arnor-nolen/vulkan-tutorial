@@ -43,9 +43,9 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 # Add src to the include path
 target_include_directories(${PROJECT_NAME} PUBLIC src)
 
-# --------------------------------
-# Vulkan magic
-# --------------------------------
+# -------------------------------------
+# Compiling shaders for Vulkan 
+# -------------------------------------
 find_package(Vulkan REQUIRED)
 
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
@@ -76,9 +76,9 @@ add_custom_target(
     DEPENDS ${SPIRV_BINARY_FILES}
     )
 
-# --------------------------------
-# End of Vulkan magic
-# --------------------------------
+# -------------------------------------
+# End of Compiling shaders for Vulkan 
+# -------------------------------------
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} ${CONAN_TARGETS} Vulkan::Vulkan)

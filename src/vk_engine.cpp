@@ -9,6 +9,7 @@
 #include <VkBootstrap.h>
 
 #include <cstdint>
+#include <fstream>
 #include <iostream>
 
 // we want to immediately abort when there is an error. In normal engines this
@@ -42,6 +43,7 @@ void VulkanEngine::init() {
   init_default_renderpass();
   init_framebuffers();
   init_sync_structures();
+  init_pipelines();
 
   // everything went fine
   _isInitialized = true;
@@ -212,6 +214,72 @@ void VulkanEngine::init_sync_structures() {
                              &_presentSemaphore));
   VK_CHECK(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr,
                              &_renderSemaphore));
+}
+
+void VulkanEngine::init_pipelines() {
+  VkShaderModule triangleFragShader;
+  if (!load_shader_module("./shaders/triangle.frag.spv", &triangleFragShader)) {
+    std::cout << "Error when building the triangle fragment shader module"
+              << '\n';
+  } else {
+    std::cout << "Triangle fragment shader successfully loaded" << '\n';
+  }
+
+  VkShaderModule triangleVertexShader;
+  if (!load_shader_module("./shaders/triangle.vert.spv",
+                          &triangleVertexShader)) {
+    std::cout << "Error when building the triangle vertex shader module"
+              << '\n';
+  } else {
+    std::cout << "Triangle vertex shader successfully loaded" << '\n';
+  }
+}
+
+auto VulkanEngine::load_shader_module(const char *filePath,
+                                      VkShaderModule *outShaderModule) -> bool {
+  // Open the file with cursor at the end
+  std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+  if (!file.is_open()) {
+    return false;
+  }
+
+  // Find what the size of the file is by looking up hte location of the cursor
+  // Because the cursor is at the end, it gives the size directly in bytes
+  size_t fileSize = static_cast<size_t>(file.tellg());
+
+  // SPIR-V expects the buffer to be on uint32, so make sure to reserve an int
+  // vector big enough for the entire file
+  std::vector<std::uint32_t> buffer(fileSize / sizeof(std::uint32_t));
+
+  // Put file cursor at the beginning
+  file.seekg(0);
+
+  // Load the entire file into the buffer
+
+  // I have no choice becase of SPIR-V only accepting std::uint32_t
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+  file.read(reinterpret_cast<char *>(buffer.data()), fileSize);
+
+  // Now that the file is loaded into the buffer, we can close it
+  file.close();
+
+  // Create a new shader module, using the buffer we loaded
+  VkShaderModuleCreateInfo createInfo = {};
+  createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  createInfo.pNext = nullptr;
+
+  // codeSize has to be in bytes
+  createInfo.codeSize = buffer.size() * sizeof(std::uint32_t);
+  createInfo.pCode = buffer.data();
+
+  // Check that the creation goes well
+  VkShaderModule shaderModule;
+  if (vkCreateShaderModule(_device, &createInfo, nullptr, &shaderModule) !=
+      VK_SUCCESS) {
+    return false;
+  }
+  *outShaderModule = shaderModule;
+  return true;
 }
 
 void VulkanEngine::cleanup() {

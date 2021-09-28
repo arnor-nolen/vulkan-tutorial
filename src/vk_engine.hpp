@@ -62,4 +62,8 @@ private:
   void init_default_renderpass();
   void init_framebuffers();
   void init_sync_structures();
+  void init_pipelines();
+  // Loads a shader module from a SPIR-V file. Returns false if it errors.
+  auto load_shader_module(const char *filePath, VkShaderModule *outShaderModule)
+      -> bool;
 };
