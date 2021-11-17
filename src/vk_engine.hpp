@@ -73,14 +73,23 @@ private:
 
 class PipelineBuilder {
 public:
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   VkViewport _viewport;
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   VkRect2D _scissor;
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   VkPipelineRasterizationStateCreateInfo _rasterizer;
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   VkPipelineColorBlendAttachmentState _colorBlendAttachment;
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   VkPipelineMultisampleStateCreateInfo _multisampling;
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   VkPipelineLayout _pipelineLayout;
 
   auto build_pipeline(VkDevice device, VkRenderPass pass) -> VkPipeline;
