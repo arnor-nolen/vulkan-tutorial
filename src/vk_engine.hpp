@@ -1,10 +1,12 @@
 ﻿#pragma once
 
+#include "vk_mesh.hpp"
+#include "vk_types.hpp"
 #include <cstdint>
 #include <deque>
 #include <functional>
 #include <vector>
-#include <vk_types.hpp>
+#include <vk_mem_alloc.h>
 
 constexpr int window_w = 1700;
 constexpr int window_h = 900;
@@ -80,6 +82,10 @@ private:
 
   DeletionQueue _mainDeletionQueue;
 
+  VmaAllocator _allocator;
+  VkPipeline _meshPipeline;
+  Mesh _triangleMesh;
+
   // Functions
   void init_vulkan();
   void init_swapchain();
@@ -88,6 +94,8 @@ private:
   void init_framebuffers();
   void init_sync_structures();
   void init_pipelines();
+  void load_meshes();
+  void upload_mesh(Mesh &mesh);
   // Loads a shader module from a SPIR-V file. Returns false if it errors.
   auto load_shader_module(const char *filePath, VkShaderModule *outShaderModule)
       -> bool;

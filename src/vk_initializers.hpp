@@ -1,7 +1,8 @@
 ﻿#pragma once
 
+#include "vk_types.hpp"
 #include <cstdint>
-#include <vk_types.hpp>
+
 
 namespace vkinit {
 auto command_pool_create_info(std::uint32_t queueFamilyIndex,
