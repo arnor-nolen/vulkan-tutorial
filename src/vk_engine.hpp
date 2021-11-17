@@ -5,11 +5,17 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <glm/glm.hpp>
 #include <vector>
 #include <vk_mem_alloc.h>
 
 constexpr int window_w = 1700;
 constexpr int window_h = 900;
+
+struct MeshPushConstants {
+  glm::vec4 data;
+  glm::mat4 render_matrix;
+};
 
 struct DeletionQueue {
   // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
@@ -77,13 +83,14 @@ private:
   VkFence _renderFence;
 
   VkPipelineLayout _trianglePipelineLayout;
+  VkPipelineLayout _meshPipelineLayout;
   VkPipeline _trianglePipeline;
   VkPipeline _redTrianglePipeline;
+  VkPipeline _meshPipeline;
 
   DeletionQueue _mainDeletionQueue;
 
   VmaAllocator _allocator;
-  VkPipeline _meshPipeline;
   Mesh _triangleMesh;
 
   // Functions

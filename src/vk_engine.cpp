@@ -2,6 +2,7 @@
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
+#include <glm/gtx/transform.hpp>
 
 #include "vk_initializers.hpp"
 #include "vk_types.hpp"
@@ -295,6 +296,25 @@ void VulkanEngine::init_pipelines() {
   VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr,
                                   &_trianglePipelineLayout));
 
+  // We start from just the default empty pipeline layout info
+  VkPipelineLayoutCreateInfo mesh_pipeline_layout_info =
+      vkinit::pipeline_layout_create_info();
+
+  // Setup push constants
+  VkPushConstantRange push_constant;
+  // This push constant range starts at the beginning
+  push_constant.offset = 0;
+  // This push constant range takes up the size of a MeshPushConstants struct
+  push_constant.size = sizeof(MeshPushConstants);
+  // This push constant range is accessible only in the vertex shader
+  push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+  mesh_pipeline_layout_info.pPushConstantRanges = &push_constant;
+  mesh_pipeline_layout_info.pushConstantRangeCount = 1;
+
+  VK_CHECK(vkCreatePipelineLayout(_device, &mesh_pipeline_layout_info, nullptr,
+                                  &_meshPipelineLayout));
+
   // Build the stage-create-info for both vertex and fragment stages. This
   // lets the pieline knwo the shader modules per stage
   PipelineBuilder pipelineBuilder;
@@ -396,6 +416,8 @@ void VulkanEngine::init_pipelines() {
       vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT,
                                                 triangleFragShader));
 
+  pipelineBuilder._pipelineLayout = _meshPipelineLayout;
+
   // Build the mesh triangle pipleine
   _meshPipeline = pipelineBuilder.build_pipeline(_device, _renderPass);
 
@@ -407,12 +429,13 @@ void VulkanEngine::init_pipelines() {
   vkDestroyShaderModule(_device, triangleFragShader, nullptr);
 
   _mainDeletionQueue.push_function([=]() {
-    // Destroy 2 pipelines we have created
+    // Destroy 3 pipelines we have created
     vkDestroyPipeline(_device, _redTrianglePipeline, nullptr);
     vkDestroyPipeline(_device, _trianglePipeline, nullptr);
     vkDestroyPipeline(_device, _meshPipeline, nullptr);
 
     // Destroy the pipeline layout that they use
+    vkDestroyPipelineLayout(_device, _meshPipelineLayout, nullptr);
     vkDestroyPipelineLayout(_device, _trianglePipelineLayout, nullptr);
   });
 }
@@ -596,6 +619,31 @@ void VulkanEngine::draw() {
   vkCmdBindVertexBuffers(cmd, 0, 1, &_triangleMesh._vertexBuffer._buffer,
                          &offset);
 
+  // Make a model view matrix for rendering the object
+  // Camera position
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+  glm::vec3 camPos = {0.F, 0.F, -2.F};
+  glm::mat4 view = glm::translate(glm::mat4(1.F), camPos);
+  // Camera projection
+  glm::mat4 projection =
+      // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+      glm::perspective(glm::radians(70.F), 1700.F / 900.F, 0.1F, 200.F);
+  projection[1][1] *= -1;
+  // Model rotation
+  glm::mat4 model = glm::rotate(
+      // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+      glm::mat4{1.F}, glm::radians(static_cast<float>(_frameNumber) * 0.4F),
+      // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+      glm::vec3(0.F, 1.F, 0.F));
+
+  // Calculate final mesh matrix
+  glm::mat4 mesh_matrix = projection * view * model;
+
+  MeshPushConstants constants = {glm::vec4(), mesh_matrix};
+
+  // Upload the matrix to the GPU via push constants
+  vkCmdPushConstants(cmd, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                     sizeof(MeshPushConstants), &constants);
   // if (_selectedShader == 0) {
   //   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
   //   _trianglePipeline);
