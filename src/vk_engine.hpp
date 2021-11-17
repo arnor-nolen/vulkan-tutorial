@@ -1,11 +1,29 @@
 ﻿#pragma once
 
 #include <cstdint>
+#include <deque>
+#include <functional>
 #include <vector>
 #include <vk_types.hpp>
 
 constexpr int window_w = 1700;
 constexpr int window_h = 900;
+
+struct DeletionQueue {
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+  std::deque<std::function<void()>> deletors;
+  void push_function(std::function<void()> &&function) {
+    deletors.push_back(function);
+  }
+
+  void flush() {
+    // Reverse iterate the deletion queue to execute all the functions
+    for (auto it = deletors.rbegin(); it != deletors.rend(); ++it) {
+      (*it)(); // Call the function
+    }
+    deletors.clear();
+  }
+};
 
 class VulkanEngine {
 public:
@@ -25,6 +43,7 @@ private:
   // Members, all are public in Tutorial
   bool _isInitialized{false};
   int _frameNumber{0};
+  int _selectedShader{0};
 
   VkExtent2D _windowExtent{window_w, window_h};
 
@@ -57,6 +76,9 @@ private:
 
   VkPipelineLayout _trianglePipelineLayout;
   VkPipeline _trianglePipeline;
+  VkPipeline _redTrianglePipeline;
+
+  DeletionQueue _mainDeletionQueue;
 
   // Functions
   void init_vulkan();
