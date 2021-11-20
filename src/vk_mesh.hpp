@@ -1,7 +1,9 @@
 #pragma once
 
 #include "vk_types.hpp"
+#include <filesystem>
 #include <glm/vec3.hpp>
+#include <string_view>
 #include <vector>
 
 struct VertexInputDescription {
@@ -20,6 +22,10 @@ struct Vertex {
 };
 
 struct Mesh {
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   std::vector<Vertex> _vertices;
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   AllocatedBuffer _vertexBuffer;
+
+  auto load_from_obj(const std::filesystem::path &filename) -> bool;
 };

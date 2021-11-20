@@ -92,6 +92,7 @@ private:
 
   VmaAllocator _allocator;
   Mesh _triangleMesh;
+  Mesh _monkeyMesh;
 
   // Functions
   void init_vulkan();

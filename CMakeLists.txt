@@ -37,8 +37,8 @@ endif()
 file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
 add_executable (${PROJECT_NAME} ${SOURCE_FILES})
 
-# Use c++17 standard
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
+# Use c++20 standard
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
 # Add src to the include path
 target_include_directories(${PROJECT_NAME} PUBLIC src)

@@ -21,8 +21,8 @@ Next, we're creating two profiles for Debug and Release:
 ```sh
 cd build
 # For debug profile, you need to build some packages from source to avoid linker warning LNK4099
-conan install .. -s build_type=Debug -if Debug --build=sdl2 --build=imgui --build=vk-bootstrap
-conan install .. -s build_type=Release -if Release
+conan install .. -s build_type=Debug -if Debug --build=sdl2 --build=imgui --build=vk-bootstrap --build=tinyobjloader --build=missing
+conan install .. -s build_type=Release -if Release --build=missing
 ```
 
 After that, the easiest way to build the application is by using VS Code [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) extension.

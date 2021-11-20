@@ -34,10 +34,12 @@ void VulkanEngine::init() {
   auto window_flags = static_cast<SDL_WindowFlags>(SDL_WINDOW_VULKAN);
 
   // NOLINTNEXTLINE(hicpp-signed-bitwise)
-  _window = SDL_CreateWindow("Vulkan Engine", SDL_WINDOWPOS_UNDEFINED,
-                             // NOLINTNEXTLINE(hicpp-signed-bitwise)
-                             SDL_WINDOWPOS_UNDEFINED, _windowExtent.width,
-                             _windowExtent.height, window_flags);
+  _window = SDL_CreateWindow(
+      // NOLINTNEXTLINE(hicpp-signed-bitwise)
+      "Vulkan Engine", SDL_WINDOWPOS_UNDEFINED,
+      // NOLINTNEXTLINE(hicpp-signed-bitwise)
+      SDL_WINDOWPOS_UNDEFINED, static_cast<int>(_windowExtent.width),
+      static_cast<int>(_windowExtent.height), window_flags);
 
   // Initialization
   init_vulkan();
@@ -454,8 +456,12 @@ void VulkanEngine::load_meshes() {
   _triangleMesh._vertices[1].color = {0.F, 1.F, 0.F};
   _triangleMesh._vertices[2].color = {0.F, 1.F, 0.F};
 
+  // Load the monkey
+  _monkeyMesh.load_from_obj("./assets/monkey_smooth.obj");
+
   // We don't care about vertex normals
   upload_mesh(_triangleMesh);
+  upload_mesh(_monkeyMesh);
 }
 
 void VulkanEngine::upload_mesh(Mesh &mesh) {
@@ -616,7 +622,7 @@ void VulkanEngine::draw() {
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
   // Bind the mesh vertex buffer with offset 0
   VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(cmd, 0, 1, &_triangleMesh._vertexBuffer._buffer,
+  vkCmdBindVertexBuffers(cmd, 0, 1, &_monkeyMesh._vertexBuffer._buffer,
                          &offset);
 
   // Make a model view matrix for rendering the object
@@ -651,7 +657,7 @@ void VulkanEngine::draw() {
   //   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
   //                     _redTrianglePipeline);
   // }
-  vkCmdDraw(cmd, 3, 1, 0, 0);
+  vkCmdDraw(cmd, static_cast<uint32_t>(_monkeyMesh._vertices.size()), 1, 0, 0);
 
   // Finalize the render pass
   vkCmdEndRenderPass(cmd);
