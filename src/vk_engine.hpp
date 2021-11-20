@@ -94,6 +94,12 @@ private:
   Mesh _triangleMesh;
   Mesh _monkeyMesh;
 
+  VkImageView _depthImageView;
+  AllocatedImage _depthImage;
+
+  // The format for depth image
+  VkFormat _depthFormat;
+
   // Functions
   void init_vulkan();
   void init_swapchain();
@@ -129,6 +135,8 @@ public:
   VkPipelineMultisampleStateCreateInfo _multisampling;
   // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   VkPipelineLayout _pipelineLayout;
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+  VkPipelineDepthStencilStateCreateInfo _depthStencil;
 
   auto build_pipeline(VkDevice device, VkRenderPass pass) -> VkPipeline;
 };

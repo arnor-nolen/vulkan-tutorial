@@ -3,7 +3,6 @@
 #include "vk_types.hpp"
 #include <cstdint>
 
-
 namespace vkinit {
 auto command_pool_create_info(std::uint32_t queueFamilyIndex,
                               VkCommandPoolCreateFlags flags = 0)
@@ -31,4 +30,15 @@ auto multisampling_state_create_info() -> VkPipelineMultisampleStateCreateInfo;
 auto color_blend_attachment_state() -> VkPipelineColorBlendAttachmentState;
 
 auto pipeline_layout_create_info() -> VkPipelineLayoutCreateInfo;
+
+auto image_create_info(VkFormat format, VkImageUsageFlags usageFlags,
+                       VkExtent3D extent) -> VkImageCreateInfo;
+
+auto imageview_create_info(VkFormat format, VkImage image,
+                           VkImageAspectFlags aspectFlags)
+    -> VkImageViewCreateInfo;
+
+auto depth_stencil_create_info(bool bDepthTest, bool bDepthWrite,
+                               VkCompareOp compareOp)
+    -> VkPipelineDepthStencilStateCreateInfo;
 } // namespace vkinit
