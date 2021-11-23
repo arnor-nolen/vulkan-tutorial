@@ -808,7 +808,7 @@ void VulkanEngine::draw() {
   submit.waitSemaphoreCount = 1;
   submit.pWaitSemaphores = &get_current_frame()._presentSemaphore;
 
-  submit.waitSemaphoreCount = 1;
+  submit.signalSemaphoreCount = 1;
   submit.pSignalSemaphores = &get_current_frame()._renderSemaphore;
 
   submit.commandBufferCount = 1;
@@ -829,8 +829,6 @@ void VulkanEngine::draw() {
 
   presentInfo.pSwapchains = &_swapchain;
   presentInfo.swapchainCount = 1;
-
-  // TODO: Causes validation errors
   presentInfo.pWaitSemaphores = &get_current_frame()._renderSemaphore;
   presentInfo.waitSemaphoreCount = 1;
 
