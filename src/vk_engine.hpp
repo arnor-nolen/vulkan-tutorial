@@ -16,12 +16,22 @@ constexpr int window_h = 900;
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
+struct GPUCameraData {
+  glm::mat4 view;
+  glm::mat4 projection;
+  glm::mat4 viewproj;
+};
+
 struct FrameData {
   VkSemaphore _presentSemaphore, _renderSemaphore;
   VkFence _renderFence;
 
   VkCommandPool _commandPool;
   VkCommandBuffer _mainCommandBuffer;
+
+  // Buffer that holds a single GPUCameraData to use when rendering
+  AllocatedBuffer cameraBuffer;
+  VkDescriptorSet globalDescriptor;
 };
 
 struct Material {
@@ -126,6 +136,9 @@ private:
   std::unordered_map<std::string, Material> _materials;
   std::unordered_map<std::string, Mesh> _meshes;
 
+  VkDescriptorSetLayout _globalSetLayout;
+  VkDescriptorPool _descriptorPool;
+
   // Functions
   void init_vulkan();
   void init_swapchain();
@@ -135,6 +148,7 @@ private:
   void init_sync_structures();
   void init_pipelines();
   void init_scene();
+  void init_descriptors();
   void load_meshes();
   void upload_mesh(Mesh &mesh);
   // Loads a shader module from a SPIR-V file. Returns false if it errors.
@@ -152,6 +166,9 @@ private:
 
   // Getter for the fraem we are rendering to right now
   auto get_current_frame() -> FrameData &;
+
+  auto create_buffer(size_t allocSize, VkBufferUsageFlags usage,
+                     VmaMemoryUsage memoryUsage) -> AllocatedBuffer;
 };
 
 class PipelineBuilder {
