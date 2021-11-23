@@ -49,4 +49,7 @@ auto semaphore_create_info(VkSemaphoreCreateFlags flags = 0)
 
 auto renderpass_begin_info(VkRenderPass renderPass, VkExtent2D windowExtent,
                            VkFramebuffer framebuffer) -> VkRenderPassBeginInfo;
+
+auto command_buffer_begin_info(VkCommandBufferUsageFlags flags)
+    -> VkCommandBufferBeginInfo;
 } // namespace vkinit

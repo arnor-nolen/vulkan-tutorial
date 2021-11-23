@@ -215,7 +215,8 @@ void VulkanEngine::init_default_renderpass() {
 
   VkAttachmentReference depth_attachment_ref = {};
   depth_attachment_ref.attachment = 1;
-  depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+  depth_attachment_ref.layout =
+      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
   // We are going to create 1 subpass, which is the minimum you can do
   VkSubpassDescription subpass = {};
@@ -741,26 +742,22 @@ void VulkanEngine::draw() {
                            1000000000));
   VK_CHECK(vkResetFences(_device, 1, &get_current_frame()._renderFence));
 
+  // Now that we are sure that the commands finished executing, we can
+  // safely reset the command buffer to begin recording again
+  VK_CHECK(vkResetCommandBuffer(get_current_frame()._mainCommandBuffer, 0));
+
   // Request image from the swapchain, one second timeout
   std::uint32_t swapchainImageIndex;
   VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1000000000,
                                  get_current_frame()._presentSemaphore, 0,
                                  &swapchainImageIndex));
 
-  // Now that we are sure that the commands finished executing, we can
-  // safely reset the command buffer to begin recording again
-  VK_CHECK(vkResetCommandBuffer(get_current_frame()._mainCommandBuffer, 0));
-
   VkCommandBuffer cmd = get_current_frame()._mainCommandBuffer;
 
   // Begin the command buffer recording. We will use this command buffer
   // exactly once, so wa want to let Vulkan know that
-  VkCommandBufferBeginInfo cmdBeginInfo = {};
-  cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  cmdBeginInfo.pNext = nullptr;
-
-  cmdBeginInfo.pInheritanceInfo = nullptr;
-  cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+  auto cmdBeginInfo = vkinit::command_buffer_begin_info(
+      VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
   VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
@@ -797,8 +794,8 @@ void VulkanEngine::draw() {
   VK_CHECK(vkEndCommandBuffer(cmd));
 
   // Prepare the submission to the queue
-  // We want to wait on the _presentSemaphore, as that semaphore is siganled
-  // when the swapchain is ready We will signal the _renderSemaphore, to
+  // We want to wait on the _presentSemaphore, as that semaphore is signaled
+  // when the swapchain is ready. We will signal the _renderSemaphore, to
   // signal that rendering has finished
   VkSubmitInfo submit = {};
   submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -822,8 +819,8 @@ void VulkanEngine::draw() {
   VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit,
                          get_current_frame()._renderFence));
 
-  // This will put hte  image we just rendered into the visible window
-  // We want to wait on the _renderSempahore for that,
+  // This will put the image we just rendered into the visible window
+  // We want to wait on the _renderSemaphore for that,
   // as it's necessary that drawing commands have finished before the image
   // is displayed to the user
   VkPresentInfoKHR presentInfo = {};
@@ -833,6 +830,7 @@ void VulkanEngine::draw() {
   presentInfo.pSwapchains = &_swapchain;
   presentInfo.swapchainCount = 1;
 
+  // TODO: Causes validation errors
   presentInfo.pWaitSemaphores = &get_current_frame()._renderSemaphore;
   presentInfo.waitSemaphoreCount = 1;
 
