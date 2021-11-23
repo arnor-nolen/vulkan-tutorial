@@ -126,7 +126,7 @@ void VulkanEngine::init_swapchain() {
 
   // The depth image will be an image with the format we selected and Depth
   // Attachment usage flag
-  VkImageCreateInfo dimg_info = vkinit::image_create_info(
+  auto dimg_info = vkinit::image_create_info(
       _depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
       depthImageExtent);
 
@@ -141,7 +141,7 @@ void VulkanEngine::init_swapchain() {
                  &_depthImage._allocation, nullptr);
 
   // Build and image-view for the depth image to use for rendering
-  VkImageViewCreateInfo dview_info = vkinit::imageview_create_info(
+  auto dview_info = vkinit::imageview_create_info(
       _depthFormat, _depthImage._image, VK_IMAGE_ASPECT_DEPTH_BIT);
 
   VK_CHECK(vkCreateImageView(_device, &dview_info, nullptr, &_depthImageView));
@@ -155,14 +155,14 @@ void VulkanEngine::init_swapchain() {
 
 void VulkanEngine::init_commands() {
   // Create a command pool for commands submitted to the graphics queue
-  VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(
+  auto commandPoolInfo = vkinit::command_pool_create_info(
       _graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
   for (auto &&frame : _frames) {
     VK_CHECK(vkCreateCommandPool(_device, &commandPoolInfo, nullptr,
                                  &frame._commandPool));
     // Allocate the default command buffer that we will use for rendering
-    VkCommandBufferAllocateInfo cmdAllocInfo =
+    auto cmdAllocInfo =
         vkinit::command_buffer_allocate_info(frame._commandPool, 1);
     VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo,
                                       &frame._mainCommandBuffer));
@@ -350,15 +350,13 @@ void VulkanEngine::init_pipelines() {
   // Build the pipeline layout that controls the inputs/outputs of the
   // shader We are not using descriptor sets or other systems yet, so no
   // need to use anything other than empty default
-  VkPipelineLayoutCreateInfo pipeline_layout_info =
-      vkinit::pipeline_layout_create_info();
+  auto pipeline_layout_info = vkinit::pipeline_layout_create_info();
 
   VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr,
                                   &_trianglePipelineLayout));
 
   // We start from just the default empty pipeline layout info
-  VkPipelineLayoutCreateInfo mesh_pipeline_layout_info =
-      vkinit::pipeline_layout_create_info();
+  auto mesh_pipeline_layout_info = vkinit::pipeline_layout_create_info();
 
   // Setup push constants
   VkPushConstantRange push_constant;
@@ -780,15 +778,8 @@ void VulkanEngine::draw() {
   // Start the main renderpass.
   // We will use the clear color from above, and the framebuffer of the
   // index the swapchain gave us
-  VkRenderPassBeginInfo rpInfo = {};
-  rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  rpInfo.pNext = nullptr;
-
-  rpInfo.renderPass = _renderPass;
-  rpInfo.renderArea.offset.x = 0;
-  rpInfo.renderArea.offset.y = 0;
-  rpInfo.renderArea.extent = _windowExtent;
-  rpInfo.framebuffer = _framebuffers[swapchainImageIndex];
+  auto rpInfo = vkinit::renderpass_begin_info(
+      _renderPass, _windowExtent, _framebuffers[swapchainImageIndex]);
 
   // Connect clear values
   auto clearValues = std::array<VkClearValue, 2>({clearValue, depthClear});

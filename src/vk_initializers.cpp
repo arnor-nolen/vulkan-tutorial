@@ -218,3 +218,22 @@ auto vkinit::semaphore_create_info(VkSemaphoreCreateFlags flags)
   info.flags = flags;
   return info;
 }
+
+auto vkinit::renderpass_begin_info(VkRenderPass renderPass,
+                                   VkExtent2D windowExtent,
+                                   VkFramebuffer framebuffer)
+    -> VkRenderPassBeginInfo {
+  VkRenderPassBeginInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+  info.pNext = nullptr;
+
+  info.renderPass = renderPass;
+  info.renderArea.offset.x = 0;
+  info.renderArea.offset.y = 0;
+  info.renderArea.extent = windowExtent;
+  info.clearValueCount = 1;
+  info.pClearValues = nullptr;
+  info.framebuffer = framebuffer;
+
+  return info;
+}

@@ -46,4 +46,7 @@ auto fence_create_info(VkFenceCreateFlags flags) -> VkFenceCreateInfo;
 
 auto semaphore_create_info(VkSemaphoreCreateFlags flags = 0)
     -> VkSemaphoreCreateInfo;
+
+auto renderpass_begin_info(VkRenderPass renderPass, VkExtent2D windowExtent,
+                           VkFramebuffer framebuffer) -> VkRenderPassBeginInfo;
 } // namespace vkinit
