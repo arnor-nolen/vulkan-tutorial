@@ -6,11 +6,31 @@
 #include <deque>
 #include <functional>
 #include <glm/glm.hpp>
+#include <unordered_map>
 #include <vector>
 #include <vk_mem_alloc.h>
 
 constexpr int window_w = 1700;
 constexpr int window_h = 900;
+
+struct FrameData {
+  VkSemaphore _presentSemaphore, _renderSemaphore;
+  VkFence _renderFence;
+
+  VkCommandPool _commandPool;
+  VkCommandBuffer _mainCommandBuffer;
+};
+
+struct Material {
+  VkPipeline pipeline;
+  VkPipelineLayout pipelineLayout;
+};
+
+struct RenderObject {
+  Mesh *mesh;
+  Material *material;
+  glm::mat4 transformMatrix;
+};
 
 struct MeshPushConstants {
   glm::vec4 data;
@@ -100,6 +120,12 @@ private:
   // The format for depth image
   VkFormat _depthFormat;
 
+  // Default array of renderable objects
+  std::vector<RenderObject> _renderables;
+
+  std::unordered_map<std::string, Material> _materials;
+  std::unordered_map<std::string, Mesh> _meshes;
+
   // Functions
   void init_vulkan();
   void init_swapchain();
@@ -108,11 +134,21 @@ private:
   void init_framebuffers();
   void init_sync_structures();
   void init_pipelines();
+  void init_scene();
   void load_meshes();
   void upload_mesh(Mesh &mesh);
   // Loads a shader module from a SPIR-V file. Returns false if it errors.
   auto load_shader_module(const char *filePath, VkShaderModule *outShaderModule)
       -> bool;
+
+  // Create material and add it to the map
+  auto create_material(VkPipeline pipeline, VkPipelineLayout layout,
+                       const std::string &name) -> Material *;
+  auto get_material(const std::string &name) -> Material *;
+  auto get_mesh(const std::string &name) -> Mesh *;
+
+  // Our draw function
+  void draw_objects(VkCommandBuffer cmd, RenderObject *first, int count);
 };
 
 class PipelineBuilder {
