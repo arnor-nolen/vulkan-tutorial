@@ -2,6 +2,7 @@
 
 #include "vk_mesh.hpp"
 #include "vk_types.hpp"
+#include <array>
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -12,6 +13,8 @@
 
 constexpr int window_w = 1700;
 constexpr int window_h = 900;
+
+constexpr unsigned int FRAME_OVERLAP = 2;
 
 struct FrameData {
   VkSemaphore _presentSemaphore, _renderSemaphore;
@@ -93,14 +96,11 @@ private:
 
   VkQueue _graphicsQueue;             // Queue we will submit to
   std::uint32_t _graphicsQueueFamily; // Family of the queue
-  VkCommandPool _commandPool;         // Command pool for our commands
-  VkCommandBuffer _mainCommandBuffer; // Buffer we are recording to
 
   VkRenderPass _renderPass;
   std::vector<VkFramebuffer> _framebuffers;
 
-  VkSemaphore _presentSemaphore, _renderSemaphore;
-  VkFence _renderFence;
+  std::array<FrameData, FRAME_OVERLAP> _frames;
 
   VkPipelineLayout _trianglePipelineLayout;
   VkPipelineLayout _meshPipelineLayout;
@@ -148,7 +148,10 @@ private:
   auto get_mesh(const std::string &name) -> Mesh *;
 
   // Our draw function
-  void draw_objects(VkCommandBuffer cmd, RenderObject *first, int count);
+  void draw_objects(VkCommandBuffer cmd, RenderObject *first, size_t count);
+
+  // Getter for the fraem we are rendering to right now
+  auto get_current_frame() -> FrameData &;
 };
 
 class PipelineBuilder {

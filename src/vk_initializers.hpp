@@ -41,4 +41,9 @@ auto imageview_create_info(VkFormat format, VkImage image,
 auto depth_stencil_create_info(bool bDepthTest, bool bDepthWrite,
                                VkCompareOp compareOp)
     -> VkPipelineDepthStencilStateCreateInfo;
+
+auto fence_create_info(VkFenceCreateFlags flags) -> VkFenceCreateInfo;
+
+auto semaphore_create_info(VkSemaphoreCreateFlags flags = 0)
+    -> VkSemaphoreCreateInfo;
 } // namespace vkinit

@@ -199,3 +199,22 @@ auto vkinit::depth_stencil_create_info(bool bDepthTest, bool bDepthWrite,
 
   return info;
 }
+
+auto vkinit::fence_create_info(VkFenceCreateFlags flags) -> VkFenceCreateInfo {
+  VkFenceCreateInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  info.pNext = nullptr;
+
+  info.flags = flags;
+  return info;
+}
+
+auto vkinit::semaphore_create_info(VkSemaphoreCreateFlags flags)
+    -> VkSemaphoreCreateInfo {
+  VkSemaphoreCreateInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+  info.pNext = nullptr;
+
+  info.flags = flags;
+  return info;
+}

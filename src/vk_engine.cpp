@@ -157,17 +157,19 @@ void VulkanEngine::init_commands() {
   // Create a command pool for commands submitted to the graphics queue
   VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(
       _graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-  VK_CHECK(
-      vkCreateCommandPool(_device, &commandPoolInfo, nullptr, &_commandPool));
 
-  // Allocate the default command buffer that we will use for rendering
-  VkCommandBufferAllocateInfo cmdAllocInfo =
-      vkinit::command_buffer_allocate_info(_commandPool, 1);
-  VK_CHECK(
-      vkAllocateCommandBuffers(_device, &cmdAllocInfo, &_mainCommandBuffer));
+  for (auto &&frame : _frames) {
+    VK_CHECK(vkCreateCommandPool(_device, &commandPoolInfo, nullptr,
+                                 &frame._commandPool));
+    // Allocate the default command buffer that we will use for rendering
+    VkCommandBufferAllocateInfo cmdAllocInfo =
+        vkinit::command_buffer_allocate_info(frame._commandPool, 1);
+    VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo,
+                                      &frame._mainCommandBuffer));
 
-  _mainDeletionQueue.push_function(
-      [=]() { vkDestroyCommandPool(_device, _commandPool, nullptr); });
+    _mainDeletionQueue.push_function(
+        [=]() { vkDestroyCommandPool(_device, frame._commandPool, nullptr); });
+  }
 }
 
 void VulkanEngine::init_default_renderpass() {
@@ -280,33 +282,30 @@ void VulkanEngine::init_framebuffers() {
 
 void VulkanEngine::init_sync_structures() {
   // Create synchronization structures
-  VkFenceCreateInfo fenceCreateInfo = {};
-  fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  fenceCreateInfo.pNext = nullptr;
-
   // We want ot create the fence with the Create Signaled flag, so we can wait
-  // on it before using it on a GPU command (fore the first time)
-  fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-  VK_CHECK(vkCreateFence(_device, &fenceCreateInfo, nullptr, &_renderFence));
-  _mainDeletionQueue.push_function(
-      [=]() { vkDestroyFence(_device, _renderFence, nullptr); });
+  // on it before using it on a GPU command (for the first time)
+  auto fenceCreateInfo =
+      vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
 
   // For the semaphores we don't need any flags
-  VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-  semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-  semaphoreCreateInfo.pNext = nullptr;
-  semaphoreCreateInfo.flags = 0;
+  auto semaphoreCreateInfo = vkinit::semaphore_create_info();
 
-  VK_CHECK(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr,
-                             &_presentSemaphore));
-  VK_CHECK(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr,
-                             &_renderSemaphore));
+  for (auto &&frame : _frames) {
+    VK_CHECK(
+        vkCreateFence(_device, &fenceCreateInfo, nullptr, &frame._renderFence));
+    _mainDeletionQueue.push_function(
+        [=]() { vkDestroyFence(_device, frame._renderFence, nullptr); });
 
-  _mainDeletionQueue.push_function([=]() {
-    vkDestroySemaphore(_device, _presentSemaphore, nullptr);
-    vkDestroySemaphore(_device, _renderSemaphore, nullptr);
-  });
+    VK_CHECK(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr,
+                               &frame._presentSemaphore));
+    VK_CHECK(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr,
+                               &frame._renderSemaphore));
+
+    _mainDeletionQueue.push_function([=]() {
+      vkDestroySemaphore(_device, frame._presentSemaphore, nullptr);
+      vkDestroySemaphore(_device, frame._renderSemaphore, nullptr);
+    });
+  }
 }
 
 void VulkanEngine::init_pipelines() {
@@ -639,9 +638,7 @@ auto VulkanEngine::load_shader_module(const char *filePath,
 
 auto VulkanEngine::create_material(VkPipeline pipeline, VkPipelineLayout layout,
                                    const std::string &name) -> Material * {
-  Material mat;
-  mat.pipeline = pipeline;
-  mat.pipelineLayout = layout;
+  Material mat = {.pipeline = pipeline, .pipelineLayout = layout};
   _materials[name] = mat;
   return &_materials[name];
 }
@@ -651,22 +648,20 @@ auto VulkanEngine::get_material(const std::string &name) -> Material * {
   auto it = _materials.find(name);
   if (it == _materials.end()) {
     return nullptr;
-  } else {
-    return &(*it).second;
   }
+  return &(*it).second;
 }
 
 auto VulkanEngine::get_mesh(const std::string &name) -> Mesh * {
   auto it = _meshes.find(name);
   if (it == _meshes.end()) {
     return nullptr;
-  } else {
-    return &(*it).second;
   }
+  return &(*it).second;
 }
 
 void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject *first,
-                                int count) {
+                                size_t count) {
   // Make a model view matrix for rendering the object
   // Camera view
   glm::vec3 camPos = {0.F, -6.F, -10.F};
@@ -679,7 +674,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject *first,
   Mesh *lastMesh = nullptr;
   Material *lastMaterial = nullptr;
 
-  for (int i = 0; i < count; i++) {
+  for (size_t i = 0; i < count; i++) {
     RenderObject &object = first[i];
 
     // Only bind the pipeline if it doesn't match with the already bound one
@@ -710,16 +705,23 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject *first,
       lastMesh = object.mesh;
     }
     // We can draw now
-    vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, 0);
+    vkCmdDraw(cmd, static_cast<uint32_t>(object.mesh->_vertices.size()), 1, 0,
+              0);
   }
+}
+
+auto VulkanEngine::get_current_frame() -> FrameData & {
+  return _frames.at(_frameNumber % _frames.size());
 }
 
 void VulkanEngine::cleanup() {
   if (_isInitialized) {
     // Make sure the GPU has stopped doing its things
     constexpr int timeout = 1000000000;
-    vkWaitForFences(_device, 1, &_renderFence, static_cast<VkBool32>(true),
-                    timeout);
+    --_frameNumber;
+    vkWaitForFences(_device, 1, &get_current_frame()._renderFence,
+                    static_cast<VkBool32>(true), timeout);
+    ++_frameNumber;
 
     _mainDeletionQueue.flush();
 
@@ -737,19 +739,21 @@ void VulkanEngine::cleanup() {
 void VulkanEngine::draw() {
   // Wait until the GPU has finished rendering the last frame. Timeout of 1
   // second.
-  VK_CHECK(vkWaitForFences(_device, 1, &_renderFence, true, 1000000000));
-  VK_CHECK(vkResetFences(_device, 1, &_renderFence));
+  VK_CHECK(vkWaitForFences(_device, 1, &get_current_frame()._renderFence, true,
+                           1000000000));
+  VK_CHECK(vkResetFences(_device, 1, &get_current_frame()._renderFence));
 
   // Request image from the swapchain, one second timeout
   std::uint32_t swapchainImageIndex;
   VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1000000000,
-                                 _presentSemaphore, 0, &swapchainImageIndex));
+                                 get_current_frame()._presentSemaphore, 0,
+                                 &swapchainImageIndex));
 
   // Now that we are sure that the commands finished executing, we can
   // safely reset the command buffer to begin recording again
-  VK_CHECK(vkResetCommandBuffer(_mainCommandBuffer, 0));
+  VK_CHECK(vkResetCommandBuffer(get_current_frame()._mainCommandBuffer, 0));
 
-  VkCommandBuffer cmd = _mainCommandBuffer;
+  VkCommandBuffer cmd = get_current_frame()._mainCommandBuffer;
 
   // Begin the command buffer recording. We will use this command buffer
   // exactly once, so wa want to let Vulkan know that
@@ -814,17 +818,18 @@ void VulkanEngine::draw() {
   submit.pWaitDstStageMask = &waitStage;
 
   submit.waitSemaphoreCount = 1;
-  submit.pWaitSemaphores = &_presentSemaphore;
+  submit.pWaitSemaphores = &get_current_frame()._presentSemaphore;
 
   submit.waitSemaphoreCount = 1;
-  submit.pSignalSemaphores = &_renderSemaphore;
+  submit.pSignalSemaphores = &get_current_frame()._renderSemaphore;
 
   submit.commandBufferCount = 1;
   submit.pCommandBuffers = &cmd;
 
   // Submit command buffer to the queue and execute it.
   // _renderFence will now block until the graphic commands finish execution
-  VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit, _renderFence));
+  VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit,
+                         get_current_frame()._renderFence));
 
   // This will put hte  image we just rendered into the visible window
   // We want to wait on the _renderSempahore for that,
@@ -837,7 +842,7 @@ void VulkanEngine::draw() {
   presentInfo.pSwapchains = &_swapchain;
   presentInfo.swapchainCount = 1;
 
-  presentInfo.pWaitSemaphores = &_renderSemaphore;
+  presentInfo.pWaitSemaphores = &get_current_frame()._renderSemaphore;
   presentInfo.waitSemaphoreCount = 1;
 
   presentInfo.pImageIndices = &swapchainImageIndex;
