@@ -46,6 +46,7 @@ struct FrameData {
   VkDescriptorSet globalDescriptor;
 
   AllocatedBuffer objectBuffer;
+  VkDescriptorSet objectDescriptor;
 };
 
 struct Material {
@@ -148,6 +149,7 @@ private:
   std::unordered_map<std::string, Mesh> _meshes;
 
   VkDescriptorSetLayout _globalSetLayout;
+  VkDescriptorSetLayout _objectSetLayout;
   VkDescriptorPool _descriptorPool;
 
   VkPhysicalDeviceProperties _gpuProperties;
