@@ -19,7 +19,7 @@ auto pipeline_shader_stage_create_info(VkShaderStageFlagBits stage,
 
 auto vertex_input_state_create_info() -> VkPipelineVertexInputStateCreateInfo;
 
-auto input_assembly_creat_info(VkPrimitiveTopology topology)
+auto input_assembly_create_info(VkPrimitiveTopology topology)
     -> VkPipelineInputAssemblyStateCreateInfo;
 
 auto rasterization_state_create_info(VkPolygonMode polygonMode)
@@ -52,4 +52,13 @@ auto renderpass_begin_info(VkRenderPass renderPass, VkExtent2D windowExtent,
 
 auto command_buffer_begin_info(VkCommandBufferUsageFlags flags)
     -> VkCommandBufferBeginInfo;
+
+auto descriptorset_layout_binding(VkDescriptorType type,
+                                  VkShaderStageFlags stageFlags,
+                                  uint32_t binding)
+    -> VkDescriptorSetLayoutBinding;
+
+auto write_descriptor_buffer(VkDescriptorType type, VkDescriptorSet dstSet,
+                             VkDescriptorBufferInfo *bufferInfo,
+                             uint32_t binding) -> VkWriteDescriptorSet;
 } // namespace vkinit

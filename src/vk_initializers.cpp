@@ -59,7 +59,7 @@ auto vkinit::vertex_input_state_create_info()
   return info;
 }
 
-auto vkinit::input_assembly_creat_info(VkPrimitiveTopology topology)
+auto vkinit::input_assembly_create_info(VkPrimitiveTopology topology)
     -> VkPipelineInputAssemblyStateCreateInfo {
   VkPipelineInputAssemblyStateCreateInfo info = {};
   info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -247,4 +247,35 @@ auto vkinit::command_buffer_begin_info(VkCommandBufferUsageFlags flags)
   info.pInheritanceInfo = nullptr;
   info.flags = flags;
   return info;
+}
+
+auto vkinit::descriptorset_layout_binding(VkDescriptorType type,
+                                          VkShaderStageFlags stageFlags,
+                                          uint32_t binding)
+    -> VkDescriptorSetLayoutBinding {
+  VkDescriptorSetLayoutBinding setbind = {};
+  setbind.binding = binding;
+  setbind.descriptorCount = 1;
+  setbind.descriptorType = type;
+  setbind.pImmutableSamplers = nullptr;
+  setbind.stageFlags = stageFlags;
+
+  return setbind;
+}
+
+auto vkinit::write_descriptor_buffer(VkDescriptorType type,
+                                     VkDescriptorSet dstSet,
+                                     VkDescriptorBufferInfo *bufferInfo,
+                                     uint32_t binding) -> VkWriteDescriptorSet {
+  VkWriteDescriptorSet write = {};
+  write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  write.pNext = nullptr;
+
+  write.dstBinding = binding;
+  write.dstSet = dstSet;
+  write.descriptorCount = 1;
+  write.descriptorType = type;
+  write.pBufferInfo = bufferInfo;
+
+  return write;
 }

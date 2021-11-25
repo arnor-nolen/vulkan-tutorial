@@ -16,6 +16,18 @@ constexpr int window_h = 900;
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
+struct GPUObjectData {
+  glm::mat4 modelMatrix;
+};
+
+struct GPUSceneData {
+  glm::vec4 fogColor;     // w is for exponent
+  glm::vec4 fogDistances; // x for min, y for max, zw unused
+  glm::vec4 ambientColor;
+  glm::vec4 sunlightDirection;
+  glm::vec4 sunlightColor;
+};
+
 struct GPUCameraData {
   glm::mat4 view;
   glm::mat4 projection;
@@ -32,6 +44,8 @@ struct FrameData {
   // Buffer that holds a single GPUCameraData to use when rendering
   AllocatedBuffer cameraBuffer;
   VkDescriptorSet globalDescriptor;
+
+  AllocatedBuffer objectBuffer;
 };
 
 struct Material {
@@ -112,10 +126,7 @@ private:
 
   std::array<FrameData, FRAME_OVERLAP> _frames;
 
-  VkPipelineLayout _trianglePipelineLayout;
   VkPipelineLayout _meshPipelineLayout;
-  VkPipeline _trianglePipeline;
-  VkPipeline _redTrianglePipeline;
   VkPipeline _meshPipeline;
 
   DeletionQueue _mainDeletionQueue;
@@ -138,6 +149,11 @@ private:
 
   VkDescriptorSetLayout _globalSetLayout;
   VkDescriptorPool _descriptorPool;
+
+  VkPhysicalDeviceProperties _gpuProperties;
+
+  GPUSceneData _sceneParameters;
+  AllocatedBuffer _sceneParameterBuffer;
 
   // Functions
   void init_vulkan();
@@ -169,6 +185,8 @@ private:
 
   auto create_buffer(size_t allocSize, VkBufferUsageFlags usage,
                      VmaMemoryUsage memoryUsage) -> AllocatedBuffer;
+
+  auto pad_uniform_buffer_size(size_t originalSize) const -> size_t;
 };
 
 class PipelineBuilder {
