@@ -16,6 +16,11 @@ constexpr int window_h = 900;
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
+struct UploadContext {
+  VkFence _uploadFence;
+  VkCommandPool _commandPool;
+};
+
 struct GPUObjectData {
   glm::mat4 modelMatrix;
 };
@@ -157,6 +162,8 @@ private:
   GPUSceneData _sceneParameters;
   AllocatedBuffer _sceneParameterBuffer;
 
+  UploadContext _uploadContext;
+
   // Functions
   void init_vulkan();
   void init_swapchain();
@@ -189,6 +196,8 @@ private:
                      VmaMemoryUsage memoryUsage) -> AllocatedBuffer;
 
   auto pad_uniform_buffer_size(size_t originalSize) const -> size_t;
+
+  void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 };
 
 class PipelineBuilder {

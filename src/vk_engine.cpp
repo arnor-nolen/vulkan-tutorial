@@ -168,6 +168,15 @@ void VulkanEngine::init_commands() {
   auto commandPoolInfo = vkinit::command_pool_create_info(
       _graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
+  auto uploadCommandPoolInfo =
+      vkinit::command_pool_create_info(_graphicsQueueFamily);
+
+  VK_CHECK(vkCreateCommandPool(_device, &uploadCommandPoolInfo, nullptr,
+                               &_uploadContext._commandPool));
+  _mainDeletionQueue.push_function([=]() {
+    vkDestroyCommandPool(_device, _uploadContext._commandPool, nullptr);
+  });
+
   for (auto &&frame : _frames) {
     VK_CHECK(vkCreateCommandPool(_device, &commandPoolInfo, nullptr,
                                  &frame._commandPool));
@@ -298,6 +307,13 @@ void VulkanEngine::init_sync_structures() {
   // on it before using it on a GPU command (for the first time)
   auto fenceCreateInfo =
       vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
+
+  auto uploadFenceCreateInfo = vkinit::fence_create_info();
+
+  VK_CHECK(vkCreateFence(_device, &uploadFenceCreateInfo, nullptr,
+                         &_uploadContext._uploadFence));
+  _mainDeletionQueue.push_function(
+      [=]() { vkDestroyFence(_device, _uploadContext._uploadFence, nullptr); });
 
   // For the semaphores we don't need any flags
   auto semaphoreCreateInfo = vkinit::semaphore_create_info();
@@ -648,23 +664,59 @@ void VulkanEngine::load_meshes() {
 }
 
 void VulkanEngine::upload_mesh(Mesh &mesh) {
-  // Allocate vertex buffer
-  VkBufferCreateInfo bufferInfo = {};
-  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  // This is the total size, in bytes, of the buffer we are allocating
-  bufferInfo.size = mesh._vertices.size() * sizeof(Vertex);
-  // This buffer is going to be used as a Vertex Buffer
-  bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+  const size_t bufferSize = mesh._vertices.size() * sizeof(Vertex);
+  // Allocate staging buffer
+  VkBufferCreateInfo stagingBufferInfo = {};
+  stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  stagingBufferInfo.pNext = nullptr;
 
-  // Let the VMA library know that this data should be writeable by CPU, but
-  // also readable by GPU
+  stagingBufferInfo.size = bufferSize;
+  stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+  // Let the VMA library know that this data should be on CPU RAM
   VmaAllocationCreateInfo vmaallocInfo = {};
-  vmaallocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+  vmaallocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+
+  AllocatedBuffer stagingBuffer;
 
   // Allocate the buffer
-  VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo,
+  VK_CHECK(vmaCreateBuffer(_allocator, &stagingBufferInfo, &vmaallocInfo,
+                           &stagingBuffer._buffer, &stagingBuffer._allocation,
+                           nullptr));
+
+  // Copy vertex data
+  void *data;
+  vmaMapMemory(_allocator, stagingBuffer._allocation, &data);
+  memcpy(data, mesh._vertices.data(), bufferSize);
+  vmaUnmapMemory(_allocator, stagingBuffer._allocation);
+
+  // Allocate vertex buffer
+  VkBufferCreateInfo vertexBufferInfo = {};
+  vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  vertexBufferInfo.pNext = nullptr;
+
+  vertexBufferInfo.size = bufferSize;
+  // This buffer is going to be used as a Vertex Buffer
+  vertexBufferInfo.usage =
+      static_cast<unsigned int>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) |
+      static_cast<unsigned int>(VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+
+  // Let the VMA library know that this data should be GPU native
+  vmaallocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+  // Allocate the buffer
+  VK_CHECK(vmaCreateBuffer(_allocator, &vertexBufferInfo, &vmaallocInfo,
                            &mesh._vertexBuffer._buffer,
                            &mesh._vertexBuffer._allocation, nullptr));
+
+  immediate_submit([=](VkCommandBuffer cmd) {
+    VkBufferCopy copy;
+    copy.dstOffset = 0;
+    copy.srcOffset = 0;
+    copy.size = bufferSize;
+    vkCmdCopyBuffer(cmd, stagingBuffer._buffer, mesh._vertexBuffer._buffer, 1,
+                    &copy);
+  });
 
   // Add the destruction of triangle mesh buffer to the deletion queue
   _mainDeletionQueue.push_function([=]() {
@@ -672,12 +724,8 @@ void VulkanEngine::upload_mesh(Mesh &mesh) {
                      mesh._vertexBuffer._allocation);
   });
 
-  // Copy vertex data
-  void *data;
-  vmaMapMemory(_allocator, mesh._vertexBuffer._allocation, &data);
-  // NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
-  memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
-  vmaUnmapMemory(_allocator, mesh._vertexBuffer._allocation);
+  vmaDestroyBuffer(_allocator, stagingBuffer._buffer,
+                   stagingBuffer._allocation);
 }
 
 auto VulkanEngine::load_shader_module(const char *filePath,
@@ -871,6 +919,42 @@ auto VulkanEngine::pad_uniform_buffer_size(size_t originalSize) const
   return alignedSize;
 }
 
+void VulkanEngine::immediate_submit(
+    std::function<void(VkCommandBuffer cmd)> &&function) {
+  // Allocate the default command buffer that we will use for the instant
+  // commands
+  auto cmdAllocInfo =
+      vkinit::command_buffer_allocate_info(_uploadContext._commandPool, 1);
+
+  VkCommandBuffer cmd;
+  VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &cmd));
+
+  // Begin the command buffer recording. We will use this command buffer exactly
+  // once, so we want to let vulkan know that
+  auto cmdBeginInfo = vkinit::command_buffer_begin_info(
+      VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+  VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+
+  // Execute the function
+  function(cmd);
+  VK_CHECK(vkEndCommandBuffer(cmd));
+
+  auto submit = vkinit::submit_info(&cmd);
+
+  // Sumbit command buffer to the queue and execute it.
+  // _uploadFence will now block until the graphic commands finish execution
+  VK_CHECK(
+      vkQueueSubmit(_graphicsQueue, 1, &submit, _uploadContext._uploadFence));
+
+  vkWaitForFences(_device, 1, &_uploadContext._uploadFence,
+                  static_cast<VkBool32>(true), 9999999999);
+  vkResetFences(_device, 1, &_uploadContext._uploadFence);
+
+  // Clear the command pool. This will free the command buffer too
+  vkResetCommandPool(_device, _uploadContext._commandPool, 0);
+}
+
 void VulkanEngine::cleanup() {
   if (_isInitialized) {
     // Make sure the GPU has stopped doing its things
@@ -967,9 +1051,7 @@ void VulkanEngine::draw() {
   // We want to wait on the _presentSemaphore, as that semaphore is signaled
   // when the swapchain is ready. We will signal the _renderSemaphore, to
   // signal that rendering has finished
-  VkSubmitInfo submit = {};
-  submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submit.pNext = nullptr;
+  auto submit = vkinit::submit_info(&cmd);
 
   VkPipelineStageFlags waitStage =
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -980,9 +1062,6 @@ void VulkanEngine::draw() {
 
   submit.signalSemaphoreCount = 1;
   submit.pSignalSemaphores = &get_current_frame()._renderSemaphore;
-
-  submit.commandBufferCount = 1;
-  submit.pCommandBuffers = &cmd;
 
   // Submit command buffer to the queue and execute it.
   // _renderFence will now block until the graphic commands finish execution

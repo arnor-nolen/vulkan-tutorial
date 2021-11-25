@@ -279,3 +279,19 @@ auto vkinit::write_descriptor_buffer(VkDescriptorType type,
 
   return write;
 }
+
+auto vkinit::submit_info(VkCommandBuffer *cmd) -> VkSubmitInfo {
+  VkSubmitInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  info.pNext = nullptr;
+
+  info.waitSemaphoreCount = 0;
+  info.pWaitSemaphores = nullptr;
+  info.pWaitDstStageMask = nullptr;
+  info.commandBufferCount = 1;
+  info.pCommandBuffers = cmd;
+  info.signalSemaphoreCount = 0;
+  info.pSignalSemaphores = nullptr;
+
+  return info;
+}

@@ -42,7 +42,7 @@ auto depth_stencil_create_info(bool bDepthTest, bool bDepthWrite,
                                VkCompareOp compareOp)
     -> VkPipelineDepthStencilStateCreateInfo;
 
-auto fence_create_info(VkFenceCreateFlags flags) -> VkFenceCreateInfo;
+auto fence_create_info(VkFenceCreateFlags flags = 0) -> VkFenceCreateInfo;
 
 auto semaphore_create_info(VkSemaphoreCreateFlags flags = 0)
     -> VkSemaphoreCreateInfo;
@@ -61,4 +61,6 @@ auto descriptorset_layout_binding(VkDescriptorType type,
 auto write_descriptor_buffer(VkDescriptorType type, VkDescriptorSet dstSet,
                              VkDescriptorBufferInfo *bufferInfo,
                              uint32_t binding) -> VkWriteDescriptorSet;
+
+auto submit_info(VkCommandBuffer *cmd) -> VkSubmitInfo;
 } // namespace vkinit
