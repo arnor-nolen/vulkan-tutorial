@@ -18,7 +18,6 @@ class VulkanTutorialConan(ConanFile):
     default_options = {
         "sdl2:opengl": False,
         "sdl2:opengles": False,
-        "sdl2:directx": False,
     }
 
     def imports(self):
