@@ -12,10 +12,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   # 1. Boost.Spirit.X3 global variable shadowing.
   add_compile_options(/W4 /wd4459)
 
-  # Suppress linker warnings:
-  # 1. external libraries are compiled without debug info.
   # Prevent command line window from spawning
-  # add_link_options(/IGNORE:4099 /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
+  # add_link_options(/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
 
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 
@@ -33,8 +31,18 @@ else()
 
 endif()
 
-# Set targets
+# Build ImGui bindings (to exclude them from clang-tidy checks)
+file(GLOB_RECURSE SOURCE_FILES "src/bindings/*.cpp")
+add_library(IMGUI_LIB OBJECT ${SOURCE_FILES})
+target_link_libraries(IMGUI_LIB ${CONAN_TARGETS})
+
+# For clang-tidy checks
+# Check in c++17 mode, since c++20 is bugged, doesn't see c++17 std::filesystem, std::optional, etc.
+# set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-extra-arg=/std:c++17")
+
 file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
+# Exclude ImGui bindings since we included them earlier
+list(FILTER SOURCE_FILES EXCLUDE REGEX "/bindings/")
 add_executable (${PROJECT_NAME} ${SOURCE_FILES})
 
 # Use c++20 standard
@@ -81,7 +89,7 @@ add_custom_target(
 # -------------------------------------
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME} ${CONAN_TARGETS} Vulkan::Vulkan)
+target_link_libraries(${PROJECT_NAME} ${CONAN_TARGETS} IMGUI_LIB Vulkan::Vulkan)
 
 # Add shaders check
 add_dependencies(${PROJECT_NAME} Shaders)

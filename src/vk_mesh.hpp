@@ -2,6 +2,7 @@
 
 #include "vk_types.hpp"
 #include <filesystem>
+#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <string_view>
 #include <vector>
@@ -17,6 +18,7 @@ struct Vertex {
   glm::vec3 position;
   glm::vec3 normal;
   glm::vec3 color;
+  glm::vec2 uv;
 
   static auto get_vertex_description() -> VertexInputDescription;
 };

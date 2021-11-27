@@ -16,6 +16,11 @@ constexpr int window_h = 900;
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
+struct Texture {
+  AllocatedImage image;
+  VkImageView imageView;
+};
+
 struct UploadContext {
   VkFence _uploadFence;
   VkCommandPool _commandPool;
@@ -55,6 +60,7 @@ struct FrameData {
 };
 
 struct Material {
+  VkDescriptorSet textureSet{VK_NULL_HANDLE};
   VkPipeline pipeline;
   VkPipelineLayout pipelineLayout;
 };
@@ -88,6 +94,10 @@ struct DeletionQueue {
 
 class VulkanEngine {
 public:
+  VmaAllocator _allocator;
+
+  DeletionQueue _mainDeletionQueue;
+
   // initializes everything in the engine
   void init();
 
@@ -99,6 +109,11 @@ public:
 
   // run main loop
   void run();
+
+  auto create_buffer(size_t allocSize, VkBufferUsageFlags usage,
+                     VmaMemoryUsage memoryUsage) -> AllocatedBuffer;
+
+  void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
 private:
   // Members, all are public in Tutorial
@@ -132,12 +147,6 @@ private:
 
   std::array<FrameData, FRAME_OVERLAP> _frames;
 
-  VkPipelineLayout _meshPipelineLayout;
-  VkPipeline _meshPipeline;
-
-  DeletionQueue _mainDeletionQueue;
-
-  VmaAllocator _allocator;
   Mesh _triangleMesh;
   Mesh _monkeyMesh;
 
@@ -155,6 +164,8 @@ private:
 
   VkDescriptorSetLayout _globalSetLayout;
   VkDescriptorSetLayout _objectSetLayout;
+  VkDescriptorSetLayout _singleTextureSetLayout;
+
   VkDescriptorPool _descriptorPool;
 
   VkPhysicalDeviceProperties _gpuProperties;
@@ -163,6 +174,8 @@ private:
   AllocatedBuffer _sceneParameterBuffer;
 
   UploadContext _uploadContext;
+
+  std::unordered_map<std::string, Texture> _loadedTextures;
 
   // Functions
   void init_vulkan();
@@ -175,10 +188,11 @@ private:
   void init_scene();
   void init_descriptors();
   void load_meshes();
+  void load_images();
   void upload_mesh(Mesh &mesh);
   // Loads a shader module from a SPIR-V file. Returns false if it errors.
-  auto load_shader_module(const char *filePath, VkShaderModule *outShaderModule)
-      -> bool;
+  auto load_shader_module(const std::filesystem::path &filePath,
+                          VkShaderModule *outShaderModule) -> bool;
 
   // Create material and add it to the map
   auto create_material(VkPipeline pipeline, VkPipelineLayout layout,
@@ -192,12 +206,7 @@ private:
   // Getter for the fraem we are rendering to right now
   auto get_current_frame() -> FrameData &;
 
-  auto create_buffer(size_t allocSize, VkBufferUsageFlags usage,
-                     VmaMemoryUsage memoryUsage) -> AllocatedBuffer;
-
   auto pad_uniform_buffer_size(size_t originalSize) const -> size_t;
-
-  void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 };
 
 class PipelineBuilder {

@@ -295,3 +295,37 @@ auto vkinit::submit_info(VkCommandBuffer *cmd) -> VkSubmitInfo {
 
   return info;
 }
+
+auto vkinit::sampler_create_info(VkFilter filters,
+                                 VkSamplerAddressMode samplerAddressMode)
+    -> VkSamplerCreateInfo {
+  VkSamplerCreateInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  info.pNext = nullptr;
+
+  info.magFilter = filters;
+  info.minFilter = filters;
+  info.addressModeU = samplerAddressMode;
+  info.addressModeV = samplerAddressMode;
+  info.addressModeW = samplerAddressMode;
+
+  return info;
+}
+
+auto vkinit::write_descriptor_image(VkDescriptorType type,
+                                    VkDescriptorSet dstSet,
+                                    VkDescriptorImageInfo *imageInfo,
+                                    std::uint32_t binding)
+    -> VkWriteDescriptorSet {
+  VkWriteDescriptorSet write = {};
+  write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  write.pNext = nullptr;
+
+  write.dstBinding = binding;
+  write.dstSet = dstSet;
+  write.descriptorCount = 1;
+  write.descriptorType = type;
+  write.pImageInfo = imageInfo;
+
+  return write;
+}

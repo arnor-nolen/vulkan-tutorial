@@ -63,4 +63,13 @@ auto write_descriptor_buffer(VkDescriptorType type, VkDescriptorSet dstSet,
                              uint32_t binding) -> VkWriteDescriptorSet;
 
 auto submit_info(VkCommandBuffer *cmd) -> VkSubmitInfo;
+
+auto sampler_create_info(
+    VkFilter filters,
+    VkSamplerAddressMode samplerAddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT)
+    -> VkSamplerCreateInfo;
+
+auto write_descriptor_image(VkDescriptorType type, VkDescriptorSet dstSet,
+                            VkDescriptorImageInfo *imageInfo,
+                            std::uint32_t binding) -> VkWriteDescriptorSet;
 } // namespace vkinit

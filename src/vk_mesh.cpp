@@ -37,9 +37,17 @@ auto Vertex::get_vertex_description() -> VertexInputDescription {
   colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
   colorAttribute.offset = offsetof(Vertex, color);
 
+  // UV will be stored at Location 3
+  VkVertexInputAttributeDescription uvAttribute = {};
+  uvAttribute.binding = 0;
+  uvAttribute.location = 3;
+  uvAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+  uvAttribute.offset = offsetof(Vertex, uv);
+
   description.attributes.push_back(positionAttribute);
   description.attributes.push_back(normalAttribute);
   description.attributes.push_back(colorAttribute);
+  description.attributes.push_back(uvAttribute);
 
   return description;
 }
@@ -93,9 +101,16 @@ auto Mesh::load_from_obj(const std::filesystem::path &filename) -> bool {
           nc[i] = attrib.normals[3 * idx.normal_index + i];
         }
 
+        // Vertex uv
+        tinyobj::real_t ux = attrib.texcoords[2 * idx.texcoord_index + 0];
+        tinyobj::real_t uy = attrib.texcoords[2 * idx.texcoord_index + 1];
+
         // We are setting the vertex color as the vertex normal. This is just
         // for display purposes
-        Vertex new_vert = {.position = vc, .normal = nc, .color = nc};
+        Vertex new_vert = {.position = vc,
+                           .normal = nc,
+                           .color = nc,
+                           .uv = glm::vec2{ux, 1 - uy}};
 
         _vertices.push_back(new_vert);
       }
