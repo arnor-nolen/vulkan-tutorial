@@ -42,5 +42,7 @@ class VulkanTutorialConan(ConanFile):
 
     def configure(self):
         # Disable iconv compilation on Windows, since it is not possible
+        # Also disable directx since we're not going to use it
         if self.settings.os == "Windows":
-            self.options["sdl2"].iconv = False
+            self.options['sdl2'].iconv = False
+            self.options['sdl2'].directx = False
