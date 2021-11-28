@@ -8,6 +8,8 @@
 #include "vk_textures.hpp"
 #include "vk_types.hpp"
 
+#include "bindings/imgui_impl_sdl.h"
+#include "bindings/imgui_impl_vulkan.h"
 #include <VkBootstrap.h>
 
 #include <array>
@@ -55,6 +57,7 @@ void VulkanEngine::init() {
   load_images();
   load_meshes();
   init_scene();
+  init_imgui();
 
   // Everything went fine
   _isInitialized = true;
@@ -118,6 +121,69 @@ void VulkanEngine::init_vulkan() {
   vmaCreateAllocator(&allocatorInfo, &_allocator);
 
   vkGetPhysicalDeviceProperties(_chosenGPU, &_gpuProperties);
+}
+
+void VulkanEngine::init_imgui() {
+  // 1: create descriptor pool for ImGui
+  // The size of the pool is very oversize, but it's copied from ImGui demo
+  // itself.
+  std::array<VkDescriptorPoolSize, 11> pool_sizes = {{
+      {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+      {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
+      {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
+      {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
+      {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
+      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
+      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
+      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
+      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
+      {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000},
+  }};
+
+  VkDescriptorPoolCreateInfo pool_info = {};
+  pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+  pool_info.maxSets = 1000;
+  pool_info.poolSizeCount = static_cast<std::uint32_t>(pool_sizes.size());
+  pool_info.pPoolSizes = pool_sizes.data();
+
+  VkDescriptorPool imguiPool;
+  VK_CHECK(vkCreateDescriptorPool(_device, &pool_info, nullptr, &imguiPool));
+
+  // 2: initialize ImGui library
+
+  // This initializes the core structures of ImGui
+  ImGui::CreateContext();
+
+  // This initializes ImGui for SDL
+  ImGui_ImplSDL2_InitForVulkan(_window);
+
+  // This initializes ImGui for vulkan
+  ImGui_ImplVulkan_InitInfo init_info = {};
+  init_info.Instance = _instance;
+  init_info.PhysicalDevice = _chosenGPU;
+  init_info.Device = _device;
+  init_info.Queue = _graphicsQueue;
+  init_info.DescriptorPool = imguiPool;
+  init_info.MinImageCount = 3;
+  init_info.ImageCount = 3;
+  init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+  ImGui_ImplVulkan_Init(&init_info, _renderPass);
+
+  // Execute a GPU command to upload ImGui font textures
+  immediate_submit(
+      [&](VkCommandBuffer cmd) { ImGui_ImplVulkan_CreateFontsTexture(cmd); });
+
+  // Clear font textures from CPU data
+  ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+  // Add teh destroy to ImGui created structures
+  _mainDeletionQueue.push_function([=]() {
+    vkDestroyDescriptorPool(_device, imguiPool, nullptr);
+    ImGui_ImplVulkan_Shutdown();
+  });
 }
 
 void VulkanEngine::init_swapchain() {
@@ -1115,6 +1181,9 @@ void VulkanEngine::cleanup() {
 }
 
 void VulkanEngine::draw() {
+
+  ImGui::Render();
+
   // Wait until the GPU has finished rendering the last frame. Timeout of 1
   // second.
   VK_CHECK(vkWaitForFences(_device, 1, &get_current_frame()._renderFence, true,
@@ -1178,6 +1247,9 @@ void VulkanEngine::draw() {
 
   draw_objects(cmd, _renderables.data(), _renderables.size());
 
+  // ImGui draw stuff
+  ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+
   // Finalize the render pass
   vkCmdEndRenderPass(cmd);
   // Finalize the comamnd buffer(we can no longer add commands, but it can
@@ -1230,11 +1302,12 @@ void VulkanEngine::run() {
   SDL_Event e;
   bool bQuit = false;
 
-  // main loop
+  // Main loop
   while (!bQuit) {
     // Handle events on queue
     while (SDL_PollEvent(&e) != 0) {
-      // close the window when user alt-f4s or clicks the X button
+      ImGui_ImplSDL2_ProcessEvent(&e);
+      // Close the window when user alt-f4s or clicks the X button
       if (e.type == SDL_QUIT) {
         bQuit = true;
       } else if (e.type == SDL_KEYDOWN) {
@@ -1246,6 +1319,15 @@ void VulkanEngine::run() {
         }
       }
     }
+
+    // ImGui new frame
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL2_NewFrame(_window);
+
+    ImGui::NewFrame();
+
+    // ImGui commands
+    ImGui::ShowDemoWindow();
 
     draw();
   }

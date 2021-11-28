@@ -187,6 +187,7 @@ private:
   void init_pipelines();
   void init_scene();
   void init_descriptors();
+  void init_imgui();
   void load_meshes();
   void load_images();
   void upload_mesh(Mesh &mesh);
