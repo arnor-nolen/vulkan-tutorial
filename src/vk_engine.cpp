@@ -66,8 +66,11 @@ void VulkanEngine::init_vulkan() {
   // Make the Vulkan instance, with basic debug features
   auto inst_ret = builder.set_app_name("Example Vulkan Application")
                       .request_validation_layers(true)
+                      // Use 1.1 for MacOS
                       .require_api_version(1, 2, 0)
                       .use_default_debug_messenger()
+                      // For MacOS
+                      // .enable_extension("VK_MVK_macos_surface")
                       .build();
   vkb::Instance vkb_inst = inst_ret.value();
 
@@ -78,10 +81,14 @@ void VulkanEngine::init_vulkan() {
   SDL_Vulkan_CreateSurface(_window, _instance, &_surface);
 
   // Use vkbootstrap to select a GPU.
-  // We want a GPU that can write to the SDL surface and supports Vulkan 1.1
+  // We want a GPU that can write to the SDL surface and supports Vulkan 1.2
   vkb::PhysicalDeviceSelector selector{vkb_inst};
-  vkb::PhysicalDevice physicalDevice =
-      selector.set_minimum_version(1, 2).set_surface(_surface).select().value();
+  vkb::PhysicalDevice physicalDevice = selector
+                                           // Use 1.1 for MacOS
+                                           .set_minimum_version(1, 2)
+                                           .set_surface(_surface)
+                                           .select()
+                                           .value();
 
   // Used for gl_BaseInstance in shader code
   VkPhysicalDeviceVulkan11Features vk11features = {};
