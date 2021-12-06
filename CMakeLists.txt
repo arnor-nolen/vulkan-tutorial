@@ -5,15 +5,18 @@ project (vulkan-tutorial)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
+# Set standard used (c++20)
+set(TARGET_COMPILE_FEATURES cxx_std_20)
+
+# -------------------------------------
 # Set compiler-specific stuff
+# -------------------------------------
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 
-  # Suppress compiler warnings:
-  # 1. Boost.Spirit.X3 global variable shadowing.
-  add_compile_options(/W4 /wd4459)
+  add_compile_options(/W4)
 
   # Prevent command line window from spawning
-  # add_link_options(/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
+  add_link_options(/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
 
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 
@@ -30,26 +33,49 @@ else()
   message(WARNING "Unknown compiler, proceeding without additional compiler options")
 
 endif()
+# -------------------------------------
+# End of compiler-specific stuff
+# -------------------------------------
 
+# -------------------------------------
+# Building executables 
+# -------------------------------------
 # Build ImGui bindings (to exclude them from clang-tidy checks)
 file(GLOB_RECURSE SOURCE_FILES "src/bindings/*.cpp")
-add_library(IMGUI_LIB OBJECT ${SOURCE_FILES})
-target_link_libraries(IMGUI_LIB ${CONAN_TARGETS})
+add_library(imgui_lib OBJECT ${SOURCE_FILES})
+target_compile_features(imgui_lib PUBLIC ${TARGET_COMPILE_FEATURES})
+target_link_libraries(imgui_lib ${CONAN_TARGETS})
 
 # For clang-tidy checks
 # Check in c++17 mode, since c++20 is bugged, doesn't see c++17 std::filesystem, std::optional, etc.
 # set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-extra-arg=/std:c++17")
 
-file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
-# Exclude ImGui bindings since we included them earlier
-list(FILTER SOURCE_FILES EXCLUDE REGEX "/bindings/")
-add_executable (${PROJECT_NAME} ${SOURCE_FILES})
+# Build asset_lib 
+# TODO: make asset_lib shared
+file(GLOB_RECURSE SOURCE_FILES "src/assetlib/*.cpp")
+add_library(asset_lib STATIC ${SOURCE_FILES})
+target_compile_features(asset_lib PUBLIC ${TARGET_COMPILE_FEATURES})
+target_link_libraries(asset_lib ${CONAN_TARGETS})
 
-# Use c++20 standard
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+# Build asset_baker
+file(GLOB_RECURSE SOURCE_FILES "src/asset-baker/*.cpp")
+add_executable(asset_baker ${SOURCE_FILES})
+target_compile_features(asset_baker PUBLIC ${TARGET_COMPILE_FEATURES})
+target_link_libraries(asset_baker ${CONAN_TARGETS} asset_lib)
+
+# Build the main app 
+file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
+list(FILTER SOURCE_FILES EXCLUDE REGEX "/bindings/")
+list(FILTER SOURCE_FILES EXCLUDE REGEX "/assetlib/")
+list(FILTER SOURCE_FILES EXCLUDE REGEX "/asset-baker/")
+add_executable (${PROJECT_NAME} ${SOURCE_FILES})
+target_compile_features(${PROJECT_NAME} PUBLIC ${TARGET_COMPILE_FEATURES})
 
 # Add src to the include path
 target_include_directories(${PROJECT_NAME} PUBLIC src)
+# -------------------------------------
+# End of building executables 
+# -------------------------------------
 
 # -------------------------------------
 # Compiling shaders for Vulkan 
@@ -89,7 +115,7 @@ add_custom_target(
 # -------------------------------------
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME} ${CONAN_TARGETS} IMGUI_LIB Vulkan::Vulkan)
+target_link_libraries(${PROJECT_NAME} ${CONAN_TARGETS} asset_lib imgui_lib Vulkan::Vulkan)
 
 # Add shaders check
 add_dependencies(${PROJECT_NAME} Shaders)

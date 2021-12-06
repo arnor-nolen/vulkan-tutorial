@@ -1,3 +1,7 @@
+# Baked assets
+*.tx
+*.mesh
+
 # ImGui bindings, get installed with Conan
 /src/bindings
 

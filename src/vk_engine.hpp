@@ -98,6 +98,8 @@ public:
 
   DeletionQueue _mainDeletionQueue;
 
+  VkDevice _device; // Vulkan device for commands
+
   // initializes everything in the engine
   void init();
 
@@ -128,7 +130,6 @@ private:
   VkInstance _instance;                      // Vulkan library header
   VkDebugUtilsMessengerEXT _debug_messenger; // Vulkan debug output handle
   VkPhysicalDevice _chosenGPU;               // GPU chosen as the default device
-  VkDevice _device;                          // Vulkan device for commands
   VkSurfaceKHR _surface;                     // Vulkan window surface
 
   VkSwapchainKHR _swapchain;

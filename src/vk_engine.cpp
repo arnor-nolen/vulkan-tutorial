@@ -12,6 +12,7 @@
 #include "bindings/imgui_impl_vulkan.h"
 #include <VkBootstrap.h>
 
+#include "utils/timer.hpp"
 #include <array>
 #include <cstdint>
 #include <fstream>
@@ -811,42 +812,24 @@ void VulkanEngine::init_descriptors() {
 }
 
 void VulkanEngine::load_meshes() {
-  // Make the array 3 vertices long
-  _triangleMesh._vertices.resize(3);
-
-  // Vertex positions
-  _triangleMesh._vertices[0].position = {1.F, 1.F, 0.F};
-  _triangleMesh._vertices[1].position = {-1.F, 1.F, 0.F};
-  _triangleMesh._vertices[2].position = {0.F, -1.F, 0.F};
-
-  // Vertex colors, all green
-  _triangleMesh._vertices[0].color = {0.F, 1.F, 0.F};
-  _triangleMesh._vertices[1].color = {0.F, 1.F, 0.F};
-  _triangleMesh._vertices[2].color = {0.F, 1.F, 0.F};
-
-  // Load the monkey
-  _monkeyMesh.load_from_obj("./assets/monkey_smooth.obj");
-
-  // We don't care about vertex normals
-  upload_mesh(_triangleMesh);
-  upload_mesh(_monkeyMesh);
-
-  // Note that we are copying them. Eventually we will delete teh hardcoded
-  // _monkey and _triangle meshes, so it's no problem now
-  _meshes["monkey"] = _monkeyMesh;
-  _meshes["triangle"] = _triangleMesh;
-
   Mesh lostEmpire{};
-  lostEmpire.load_from_obj("./assets/lost_empire.obj");
-  upload_mesh(lostEmpire);
+  {
+    Timer timer("Loading mesh took ");
+
+    lostEmpire.load_from_meshasset("./assets/lost_empire.mesh");
+    upload_mesh(lostEmpire);
+  }
+
   _meshes["empire"] = lostEmpire;
 }
 
 void VulkanEngine::load_images() {
   Texture lostEmpire;
-
-  vkutil::load_image_from_file(*this, "./assets/lost_empire-RGBA.png",
-                               lostEmpire.image);
+  {
+    Timer timer("Loading asset took ");
+    vkutil::load_image_from_asset(*this, "./assets/lost_empire-RGBA.tx",
+                                  lostEmpire.image);
+  }
 
   auto imageInfo = vkinit::imageview_create_info(VK_FORMAT_R8G8B8A8_SRGB,
                                                  lostEmpire.image._image,

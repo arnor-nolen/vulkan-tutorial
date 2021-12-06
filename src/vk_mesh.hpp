@@ -23,11 +23,24 @@ struct Vertex {
   static auto get_vertex_description() -> VertexInputDescription;
 };
 
+struct RenderBounds {
+  glm::vec3 origin;
+  float radius;
+  glm::vec3 extents;
+  bool valid;
+};
+
 struct Mesh {
   // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   std::vector<Vertex> _vertices;
+  std::vector<std::uint32_t> _indices;
   // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   AllocatedBuffer _vertexBuffer;
+  AllocatedBuffer _indexBuffer;
+
+  RenderBounds bounds;
 
   auto load_from_obj(const std::filesystem::path &filename) -> bool;
+
+  auto load_from_meshasset(const std::filesystem::path &filename) -> bool;
 };

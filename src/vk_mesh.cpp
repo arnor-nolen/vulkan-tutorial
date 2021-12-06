@@ -1,4 +1,5 @@
 #include "vk_mesh.hpp"
+#include "assetlib/mesh_asset.hpp"
 #include <array>
 #include <filesystem>
 #include <iostream>
@@ -50,6 +51,92 @@ auto Vertex::get_vertex_description() -> VertexInputDescription {
   description.attributes.push_back(uvAttribute);
 
   return description;
+}
+
+auto Mesh::load_from_meshasset(const std::filesystem::path &filename) -> bool {
+  assets::AssetFile file;
+  bool loaded = assets::load_binaryfile(filename, file);
+
+  if (!loaded) {
+    std::cout << "Error when loading mesh " << filename << std::endl;
+    ;
+    return false;
+  }
+
+  assets::MeshInfo meshinfo = assets::read_mesh_info(&file);
+
+  std::vector<char> vertexBuffer;
+  std::vector<char> indexBuffer;
+
+  vertexBuffer.resize(meshinfo.vertexBufferSize);
+  indexBuffer.resize(meshinfo.indexBufferSize);
+
+  assets::unpack_mesh(&meshinfo, file.binaryBlob.data(), file.binaryBlob.size(),
+                      vertexBuffer.data(), indexBuffer.data());
+
+  bounds.extents = {meshinfo.bounds.extents[0], meshinfo.bounds.extents[1],
+                    meshinfo.bounds.extents[2]};
+  bounds.origin = {meshinfo.bounds.origin[0], meshinfo.bounds.origin[1],
+                   meshinfo.bounds.origin[2]};
+  bounds.radius = meshinfo.bounds.radius;
+  bounds.valid = true;
+
+  _vertices.clear();
+  _indices.clear();
+
+  _indices.resize(indexBuffer.size() / sizeof(std::uint32_t));
+  for (int i = 0; i != _indices.size(); ++i) {
+    uint32_t *unpacked_indices = (uint32_t *)indexBuffer.data();
+    _indices[i] = unpacked_indices[i];
+  }
+
+  if (meshinfo.vertexFormat == assets::VertexFormat::PNCV_F32) {
+    assets::Vertex_f32_PNCV *unpackedVertices =
+        (assets::Vertex_f32_PNCV *)vertexBuffer.data();
+
+    _vertices.resize(vertexBuffer.size() / sizeof(assets::Vertex_f32_PNCV));
+
+    for (int i = 0; i != _vertices.size(); ++i) {
+
+      _vertices[i].position.x = unpackedVertices[i].position[0];
+      _vertices[i].position.y = unpackedVertices[i].position[1];
+      _vertices[i].position.z = unpackedVertices[i].position[2];
+
+      _vertices[i].normal = glm::vec3(unpackedVertices[i].normal[0],
+                                      unpackedVertices[i].normal[1],
+                                      unpackedVertices[i].normal[2]);
+
+      _vertices[i].color =
+          glm::vec3{unpackedVertices[i].color[0], unpackedVertices[i].color[1],
+                    unpackedVertices[i].color[2]};
+
+      _vertices[i].uv.x = unpackedVertices[i].uv[0];
+      _vertices[i].uv.y = unpackedVertices[i].uv[1];
+    }
+  } else if (meshinfo.vertexFormat == assets::VertexFormat::P32N8C8V16) {
+    assets::Vertex_P32N8C8V16 *unpackedVertices =
+        (assets::Vertex_P32N8C8V16 *)vertexBuffer.data();
+
+    _vertices.resize(vertexBuffer.size() / sizeof(assets::Vertex_P32N8C8V16));
+
+    for (int i = 0; i < _vertices.size(); i++) {
+      _vertices[i].position = {unpackedVertices[i].position[0],
+                               unpackedVertices[i].position[1],
+                               unpackedVertices[i].position[2]};
+      _vertices[i].normal = {unpackedVertices[i].normal[0],
+                             unpackedVertices[i].normal[1],
+                             unpackedVertices[i].normal[2]};
+      _vertices[i].color = {unpackedVertices[i].color[0],
+                            unpackedVertices[i].color[1],
+                            unpackedVertices[i].color[2]};
+      _vertices[i].uv = {unpackedVertices[i].uv[0], unpackedVertices[i].uv[1]};
+    }
+  }
+
+  std::cout << "Loaded mesh " << filename << ": Verts=" << _vertices.size()
+            << ", Tris=" << _indices.size() / 3 << '\n';
+
+  return true;
 }
 
 auto Mesh::load_from_obj(const std::filesystem::path &filename) -> bool {

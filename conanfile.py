@@ -13,6 +13,8 @@ class VulkanTutorialConan(ConanFile):
         "vulkan-memory-allocator/2.3.0",
         "vulkan-headers/1.2.195",
         "volk/1.2.195",
+        "lz4/1.9.3",
+        "nlohmann_json/3.10.4"
     )
     generators = "cmake"
     default_options = {
@@ -21,6 +23,12 @@ class VulkanTutorialConan(ConanFile):
     }
 
     def imports(self):
+        # Copy shared libraries
+        self.copy("*.dll", dst="bin", keep_path=False)
+        self.copy("*.dylib", dst="lib", keep_path=False)
+        self.copy("*.so", dst="lib", keep_path=False)
+
+        # Copy ImGui headers
         self.copy(
             "imgui_impl_sdl.cpp",
             dst="../../src/bindings",
